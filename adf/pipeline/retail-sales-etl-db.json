@@ -1,0 +1,46 @@
+{
+	"name": "retail-sales-etl-db",
+	"properties": {
+		"activities": [
+			{
+				"name": "Job-retail-sales-etl",
+				"type": "DatabricksJob",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "0.12:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"jobId": "24908650270547",
+					"jobParameters": {
+						"source_table": {
+							"value": "@pipeline().parameters.source_table",
+							"type": "Expression"
+						},
+						"run_id": {
+							"value": "@pipeline().RunId",
+							"type": "Expression"
+						}
+					}
+				},
+				"linkedServiceName": {
+					"referenceName": "ls_databricks_retail_lakehouse",
+					"type": "LinkedServiceReference"
+				}
+			}
+		],
+		"parameters": {
+			"source_table": {
+				"type": "string",
+				"defaultValue": "de_catalog.bronze.sales_raw"
+			}
+		},
+		"annotations": [],
+		"lastPublishTime": "2026-10-30T18:14:20Z"
+	},
+	"type": "Microsoft.DataFactory/factories/pipelines"
+}

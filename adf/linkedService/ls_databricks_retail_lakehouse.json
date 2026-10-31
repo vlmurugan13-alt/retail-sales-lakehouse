@@ -1,0 +1,13 @@
+{
+	"name": "ls_databricks_retail_lakehouse",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureDatabricks",
+		"typeProperties": {
+			"domain": "https://adb-7405606355396914.14.azuredatabricks.net",
+			"authentication": "MSI",
+			"workspaceResourceId": "/subscriptions/0932be67-ba8f-442b-bf12-f21f8b2b0737/resourceGroups/Test_RG/providers/Microsoft.Databricks/workspaces/DE_DB_01"
+		}
+	}
+}

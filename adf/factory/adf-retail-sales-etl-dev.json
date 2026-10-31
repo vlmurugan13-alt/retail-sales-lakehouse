@@ -1,0 +1,15 @@
+{
+	"name": "adf-retail-sales-etl-dev",
+	"properties": {
+		"trustModeClaimForMi": {
+			"value": "Disabled",
+			"editable": true
+		}
+	},
+	"location": "northeurope",
+	"identity": {
+		"type": "SystemAssigned",
+		"principalId": "ebaf9c90-2f94-452b-ad09-345ecc37b5ed",
+		"tenantId": "106674c7-ca51-4a23-970a-84f0443bb6db"
+	}
+}

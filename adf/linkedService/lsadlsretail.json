@@ -1,0 +1,11 @@
+{
+	"name": "lsadlsretail",
+	"type": "Microsoft.DataFactory/factories/linkedservices",
+	"properties": {
+		"annotations": [],
+		"type": "AzureBlobFS",
+		"typeProperties": {
+			"url": "https://deproject01.dfs.core.windows.net/"
+		}
+	}
+}
