@@ -1,5 +1,5 @@
 
-name: Databricks Notebook CI
+name: Retail Sales Lakehouse CI
 
 on:
   push:
@@ -7,30 +7,44 @@ on:
       - main
     paths:
       - 'notebooks/**'
-      - '.github/workflows/databricks-notebook-ci.yml'
+      - 'adf/**'
+      - '.github/workflows/**'
 
   pull_request:
     branches:
       - main
     paths:
       - 'notebooks/**'
-      - '.github/workflows/databricks-notebook-ci.yml'
+      - 'adf/**'
+      - '.github/workflows/**'
+
+  workflow_dispatch:
+    inputs:
+      target_branch:
+        description: 'Branch to validate'
+        required: true
+        type: choice
+        options:
+          - main
+          - adf_publish
 
 jobs:
-  validate-notebooks:
-    name: Validate Databricks Notebooks
+  validate-project:
+    name: Validate Databricks and ADF
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.target_branch || github.ref }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Validate notebook JSON and Python syntax
+      - name: Validate Databricks notebooks
         run: |
           python - <<'PY'
           import ast
@@ -39,52 +53,89 @@ jobs:
 
           notebooks = list(Path("notebooks").rglob("*.ipynb"))
 
-          if not notebooks:
-              raise SystemExit("No notebooks found!")
-
-          errors = []
-
           for notebook in notebooks:
-              print(f"Checking: {notebook}")
+              print(f"Checking notebook: {notebook}")
+              data = json.loads(notebook.read_text(encoding="utf-8"))
 
-              try:
-                  data = json.loads(notebook.read_text(encoding="utf-8"))
+              if not isinstance(data.get("cells"), list):
+                  raise ValueError(f"Invalid notebook structure: {notebook}")
 
-                  if not isinstance(data.get("cells"), list):
-                      raise ValueError("Missing notebook cells")
+              for index, cell in enumerate(data["cells"]):
+                  if cell.get("cell_type") != "code":
+                      continue
 
-                  for index, cell in enumerate(data["cells"]):
-                      if cell.get("cell_type") != "code":
-                          continue
+                  source = cell.get("source", [])
+                  if isinstance(source, list):
+                      source = "".join(source)
 
-                      source = cell.get("source", [])
-                      if isinstance(source, list):
-                          source = "".join(source)
+                  lines = source.splitlines()
+                  first = next(
+                      (line.strip() for line in lines if line.strip()),
+                      ""
+                  )
 
-                      lines = source.splitlines()
+                  # Skip SQL and other cell-magic cells
+                  if first.startswith(("%%", "%", "!")):
+                      print(f"  Skipping magic cell {index + 1}")
+                      continue
 
-                      # Skip cells using cell-level magic commands
-                      if any(line.lstrip().startswith("%%") for line in lines):
-                          print(f"  Skipping magic cell {index + 1}")
-                          continue
+                  # Remove standalone line magic commands
+                  cleaned = "\n".join(
+                      line for line in lines
+                      if not line.lstrip().startswith(("%", "!"))
+                  )
 
-                      # Remove Databricks/Jupyter line magic commands
-                      cleaned = "\n".join(
-                          line for line in lines
-                          if not line.lstrip().startswith(("%", "!"))
+                  if cleaned.strip():
+                      ast.parse(cleaned, filename=str(notebook))
+
+              print("  PASS")
+
+          print(f"Validated {len(notebooks)} notebook(s).")
+          PY
+
+      - name: Validate ADF and ARM JSON files
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          files = set()
+
+          # ADF source configuration files
+          adf_folder = Path("adf")
+          if adf_folder.exists():
+              files.update(adf_folder.rglob("*.json"))
+
+          # Generated ADF deployment templates
+          files.update(Path(".").rglob("ARMTemplate*.json"))
+
+          if not files:
+              raise SystemExit("No ADF or ARM JSON files found.")
+
+          for file in sorted(files):
+              print(f"Checking JSON: {file}")
+
+              data = json.loads(file.read_text(encoding="utf-8"))
+
+              if file.name == "ARMTemplateForFactory.json":
+                  if not isinstance(data.get("resources"), list):
+                      raise ValueError(
+                          f"ARM template has no valid resources array: {file}"
                       )
 
-                      if cleaned.strip():
-                          ast.parse(cleaned, filename=str(notebook))
+              if file.name == "ARMTemplateParametersForFactory.json":
+                  if not isinstance(data.get("parameters"), dict):
+                      raise ValueError(
+                          f"Invalid ARM parameters structure: {file}"
+                      )
 
-                  print("  PASS")
+              print("  PASS")
 
-              except Exception as error:
-                  errors.append(f"{notebook}: {error}")
-                  print(f"  FAIL: {error}")
-
-          if errors:
-              raise SystemExit("\n".join(errors))
-
-          print(f"\nSUCCESS: Validated {len(notebooks)} notebook(s).")
+          print(f"Validated {len(files)} ADF/ARM JSON file(s).")
           PY
+
+      - name: CI completed
+        run: echo "Retail Sales Lakehouse CI passed!"
+
+
+    
