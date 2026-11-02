@@ -5,10 +5,12 @@ on:
   push:
     branches:
       - main
+      - adf_publish
     paths:
       - 'notebooks/**'
       - 'adf/**'
       - '.github/workflows/**'
+      - '**/ARMTemplate*.json'
 
   pull_request:
     branches:
